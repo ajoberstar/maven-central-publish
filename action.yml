@@ -1,0 +1,74 @@
+name: "Publish to Maven Central"
+description: "Publish a bundle to Maven Central's portal"
+inputs:
+  username:
+    description: Username to Maven Central portal
+    required: true
+  token:
+    description: Token to Maven Central portal
+    required: true
+  bundle-path:
+    description: Path to bundle ZIP
+    required: true
+  publishing-type:
+    description: AUTOMATIC or USER_MANAGED
+    required: true
+    default: USER_MANAGED
+runs:
+  using: "composite"
+  steps:
+    - name: Verify owner
+      run: |
+        # I don't intend to support this for anyone else
+        if [ "$GITHUB_REPOSITORY_OWNER" = "ajoberstar" ]; then
+          echo "Owner is allowed: $GITHUB_REPOSITORY_OWNER"
+        else
+          echo "::error::Owner is not allowed: $GITHUB_REPOSITORY_OWNER"
+          exit 1
+        fi
+    - name: Prepare bearer token
+      id: token
+      run: |
+        TOKEN=$(echo "${{ inputs.username }}:${{ inputs.token }}" | base64)
+        echo "::add-mask::$TOKEN"
+        echo "value=$TOKEN" >> $GITHUB_OUTPUT
+    - name: Upload bundle
+      id: upload
+      run: |
+        DEPLOYMENT_ID=$(curl --request POST \
+          --header 'Authorization: Bearer ${{ steps.token.outputs.value }}' \
+          --form bundle=@${{ inputs.bundle-path }} \
+          https://central.sonatype.com/api/v1/publisher/upload)
+        echo "deployment-id=$DEPLOYMENT_ID" >> $GITHUB_OUTPUT
+    - name: Monitor progress
+      run: |
+        EXIT=""
+        while [ -z $EXIT ]; do
+          sleep 5
+          STATUS=$(curl --request POST \
+            --header 'Authorization: Bearer ${{ steps.token.outputs.value }}' \
+            'https://central.sonatype.com/api/v1/publisher/status?id=${{ steps.upload.outputs.deployment-id }}')
+
+          STATE=$(echo $STATUS | jq -r '.deploymentState')
+          case $STATE in
+            PENDING | VALIDATING | PUBLISHING)
+              echo "Bundle $STATE..."
+              ;;
+            VALIDATED)
+              echo "::notice::Bundle validated succesfully. Use the portal to finish publishing."
+              echo "$STATUS"
+              EXIT="0"
+              ;;
+            PUBLISHED)
+              echo "::notice::Bundle published successfully"
+              echo "$STATUS"
+              EXIT="0"
+              ;;
+            FAILED)
+              echo "::error::Failed to publish bundle"
+              echo "$STATUS"
+              EXIT="1"
+              ;;
+          esac
+          exit $EXIT
+        done
