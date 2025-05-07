@@ -39,6 +39,7 @@ runs:
       shell: bash
       run: |
         DEPLOYMENT_ID=$(curl --request POST \
+          --silent \
           --header 'Authorization: Bearer ${{ steps.token.outputs.value }}' \
           --form bundle=@${{ inputs.bundle-path }} \
           https://central.sonatype.com/api/v1/publisher/upload)
@@ -50,6 +51,7 @@ runs:
         while [ -z "$EXIT" ]; do
           sleep 5
           STATUS=$(curl --request POST \
+            --silent \
             --header 'Authorization: Bearer ${{ steps.token.outputs.value }}' \
             'https://central.sonatype.com/api/v1/publisher/status?id=${{ steps.upload.outputs.deployment-id }}')
 
