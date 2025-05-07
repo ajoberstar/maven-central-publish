@@ -18,6 +18,7 @@ runs:
   using: "composite"
   steps:
     - name: Verify owner
+      shell: bash
       run: |
         # I don't intend to support this for anyone else
         if [ "$GITHUB_REPOSITORY_OWNER" = "ajoberstar" ]; then
@@ -28,12 +29,14 @@ runs:
         fi
     - name: Prepare bearer token
       id: token
+      shell: bash
       run: |
         TOKEN=$(echo "${{ inputs.username }}:${{ inputs.token }}" | base64)
         echo "::add-mask::$TOKEN"
         echo "value=$TOKEN" >> $GITHUB_OUTPUT
     - name: Upload bundle
       id: upload
+      shell: bash
       run: |
         DEPLOYMENT_ID=$(curl --request POST \
           --header 'Authorization: Bearer ${{ steps.token.outputs.value }}' \
@@ -41,9 +44,10 @@ runs:
           https://central.sonatype.com/api/v1/publisher/upload)
         echo "deployment-id=$DEPLOYMENT_ID" >> $GITHUB_OUTPUT
     - name: Monitor progress
+      shell: bash
       run: |
         EXIT=""
-        while [ -z $EXIT ]; do
+        while [ -z "$EXIT" ]; do
           sleep 5
           STATUS=$(curl --request POST \
             --header 'Authorization: Bearer ${{ steps.token.outputs.value }}' \
