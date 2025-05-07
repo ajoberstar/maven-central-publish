@@ -76,5 +76,5 @@ runs:
               EXIT="1"
               ;;
           esac
-          exit $EXIT
         done
+        exit $EXIT
