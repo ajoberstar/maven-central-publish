@@ -66,17 +66,17 @@ runs:
               ;;
             VALIDATED)
               echo "::notice::Bundle validated succesfully. Use the portal to finish publishing."
-              echo "$STATUS"
+              echo "$STATUS" | jq
               EXIT="0"
               ;;
             PUBLISHED)
               echo "::notice::Bundle published successfully"
-              echo "$STATUS"
+              echo "$STATUS" | jq
               EXIT="0"
               ;;
             FAILED)
               echo "::error::Failed to publish bundle"
-              echo "$STATUS"
+              echo "$STATUS" | jq
               EXIT="1"
               ;;
           esac
